@@ -182,6 +182,7 @@ GLFWAPI GLFWwindow* glfwCreateWindow(int width, int height,
     wndconfig.height        = height;
     wndconfig.title         = title;
     wndconfig.resizable     = _glfw.hints.resizable ? GL_TRUE : GL_FALSE;
+	wndconfig.maintainAspectRatio = _glfw.hints.maintainAspectRatio ? GL_TRUE : GL_FALSE;
     wndconfig.visible       = _glfw.hints.visible ? GL_TRUE : GL_FALSE;
     wndconfig.decorated     = _glfw.hints.decorated ? GL_TRUE : GL_FALSE;
     wndconfig.clientAPI     = _glfw.hints.clientAPI;
@@ -205,7 +206,8 @@ GLFWAPI GLFWwindow* glfwCreateWindow(int width, int height,
     if (wndconfig.monitor)
     {
         wndconfig.resizable = GL_TRUE;
-        wndconfig.visible   = GL_TRUE;
+		wndconfig.maintainAspectRatio = GL_FALSE;
+		wndconfig.visible   = GL_TRUE;
 
         // Set up desired video mode
         window->videoMode.width       = width;
@@ -218,8 +220,11 @@ GLFWAPI GLFWwindow* glfwCreateWindow(int width, int height,
 
     window->monitor     = wndconfig.monitor;
     window->resizable   = wndconfig.resizable;
+	window->maintainAspectRatio = wndconfig.maintainAspectRatio;
     window->decorated   = wndconfig.decorated;
     window->cursorMode  = GLFW_CURSOR_NORMAL;
+	window->aspectX     = width;
+	window->aspectY     = height;
 
     // Save the currently current context so it can be restored later
     previous = (_GLFWwindow*) glfwGetCurrentContext();
@@ -277,6 +282,7 @@ void glfwDefaultWindowHints(void)
 
     // The default is a visible, resizable window with decorations
     _glfw.hints.resizable = GL_TRUE;
+	_glfw.hints.maintainAspectRatio = GL_FALSE;
     _glfw.hints.visible   = GL_TRUE;
     _glfw.hints.decorated = GL_TRUE;
 
@@ -336,6 +342,9 @@ GLFWAPI void glfwWindowHint(int target, int hint)
         case GLFW_RESIZABLE:
             _glfw.hints.resizable = hint;
             break;
+		case GLFW_MAINTAIN_ASPECT_RATIO:
+			_glfw.hints.maintainAspectRatio = hint;
+			break;
         case GLFW_DECORATED:
             _glfw.hints.decorated = hint;
             break;
@@ -555,6 +564,8 @@ GLFWAPI int glfwGetWindowAttrib(GLFWwindow* handle, int attrib)
             return window->iconified;
         case GLFW_RESIZABLE:
             return window->resizable;
+		case GLFW_MAINTAIN_ASPECT_RATIO:
+			return window->maintainAspectRatio;
         case GLFW_DECORATED:
             return window->decorated;
         case GLFW_VISIBLE:

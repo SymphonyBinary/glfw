@@ -137,6 +137,7 @@ struct _GLFWwndconfig
     int           height;
     const char*   title;
     GLboolean     resizable;
+	GLboolean     maintainAspectRatio;
     GLboolean     visible;
     GLboolean     decorated;
     int           clientAPI;
@@ -190,12 +191,17 @@ struct _GLFWwindow
     // Window settings and state
     GLboolean           iconified;
     GLboolean           resizable;
+	GLboolean			maintainAspectRatio;
     GLboolean           decorated;
     GLboolean           visible;
     GLboolean           closed;
     void*               userPointer;
     GLFWvidmode         videoMode;
     _GLFWmonitor*       monitor;
+
+	// window size (for maintaining aspect ratios)
+	unsigned long		aspectX;
+	unsigned long		aspectY;
 
     // Window input state
     GLboolean           stickyKeys;
@@ -277,6 +283,7 @@ struct _GLFWlibrary
         int         auxBuffers;
         GLboolean   stereo;
         GLboolean   resizable;
+		GLboolean   maintainAspectRatio;
         GLboolean   visible;
         GLboolean   decorated;
         int         samples;

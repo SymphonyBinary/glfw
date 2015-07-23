@@ -33,6 +33,8 @@
 #include <stdlib.h>
 #include <malloc.h>
 #include <windowsx.h>
+#include <math.h>
+#include <stdio.h>
 
 #define _GLFW_KEY_INVALID -2
 
@@ -366,8 +368,29 @@ static int translateKey(WPARAM wParam, LPARAM lParam)
     return GLFW_KEY_UNKNOWN;
 }
 
+//------------------------------------------------------------------------------
+
+// Translates a Windows key to the corresponding GLFW key
+//
+static long constrainProportions(long x, long y, long x0, long y0)
+{
+	const double r = (double)x0 / (double)y0;
+	const double min = ceil(r * (y - 0.5));
+	const double max = ceil(r * (y + 0.5)) - 1;
+	if (max < min)
+		x = (long)(r * y + 0.5);
+	else if (x < min)
+		x = (long)min;
+	else if (x > max)
+		x = (long)max;
+	return x;
+}
+
 // Window callback function (handles window events)
 //
+static int resizing = 0;
+static int testResizing = 0;
+static HBITMAP hBitmap;
 static LRESULT CALLBACK windowProc(HWND hWnd, UINT uMsg,
                                    WPARAM wParam, LPARAM lParam)
 {
@@ -664,6 +687,287 @@ static LRESULT CALLBACK windowProc(HWND hWnd, UINT uMsg,
             return 0;
         }
 
+		case WM_ENTERSIZEMOVE:
+		{
+			BITMAPINFO MyBMInfo = { 0 };
+			BITMAPFILEHEADER bfh = { 0 };
+			int screenwidth, screenheight;
+			char* pBits;
+			RECT clientArea;
+			HDC hDCScreen;
+			FILE *fp = NULL;
+			char* p;
+			int ret1, ret2, ret3;
+			_GLFWwindow* prevWindow;
+			GLboolean huh;
+			unsigned int i;
+
+			prevWindow = _glfwPlatformGetCurrentContext();
+
+			_glfwPlatformMakeContextCurrent(window);
+
+			//get size of window
+			GetClientRect(hWnd, &clientArea);
+			screenwidth = clientArea.right - clientArea.left;
+			screenheight = clientArea.bottom - clientArea.top;
+
+			// initialize DIB parameters
+			MyBMInfo.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+			MyBMInfo.bmiHeader.biWidth = screenwidth;
+			MyBMInfo.bmiHeader.biHeight = screenheight;
+			MyBMInfo.bmiHeader.biPlanes = 1;
+			MyBMInfo.bmiHeader.biBitCount = 32; 
+			MyBMInfo.bmiHeader.biCompression = BI_RGB;
+			MyBMInfo.bmiHeader.biSizeImage = screenwidth * screenheight * 4;
+
+			hDCScreen = GetDC(hWnd);
+			hBitmap = CreateDIBSection(hDCScreen, &MyBMInfo, DIB_RGB_COLORS, (char**)&pBits, 0, 0);
+			glPixelStorei(GL_PACK_ALIGNMENT, 4);
+			glReadPixels(0, 0, screenwidth, screenheight, GL_RGBA, GL_UNSIGNED_BYTE, pBits);
+			
+			//DIB color ordering is blue, green, red, alpha, instead of red, green, blue, alpha.
+			for(i = 0; i < MyBMInfo.bmiHeader.biSizeImage; i += 4 )
+			{
+				pBits[i] ^= pBits[i + 2];
+				pBits[i + 2] ^= pBits[i];
+				pBits[i] ^= pBits[i + 2];
+			}
+
+			///////////////////////
+			fp = fopen("testesttest.bmp", "w+b");
+
+			//WTF + 2???
+			bfh.bfOffBits = sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER);
+			bfh.bfSize = bfh.bfOffBits + MyBMInfo.bmiHeader.biSizeImage;
+			bfh.bfType = (WORD)0x4d42;
+
+			if (fp)
+			{
+				fwrite(&bfh, 1, sizeof(BITMAPFILEHEADER), fp);
+
+				fwrite(&MyBMInfo.bmiHeader, 1, sizeof(BITMAPINFOHEADER), fp);
+			}
+
+			//p = (char*)malloc(MyBMInfo.bmiHeader.biSizeImage * sizeof(char));
+
+			//GetDIBits(hDCScreen, hBitmap, 0, MyBMInfo.bmiHeader.biHeight, p, &MyBMInfo, DIB_RGB_COLORS);
+			if (fp)
+				fwrite(pBits, 1, MyBMInfo.bmiHeader.biSizeImage * sizeof(char), fp);
+
+			//free(p);
+
+			if (fp)
+				fclose(fp);
+
+
+			/////////////////////////
+
+
+
+
+
+
+			//convert bitmahpdeandle to dib
+
+			ret2 = ReleaseDC(hWnd, hDCScreen);
+
+
+			
+
+
+
+			/*
+			HDC originalDC;
+			BITMAPINFO info;
+			void* pBits;
+			HBITMAP hBitmap;
+			int iScreenWidth, iScreenHeight, iBpi;
+
+			originalDC = GetDC(hWnd);
+			resizeBufferDC = CreateCompatibleDC(originalDC);
+
+			// create a DIB to hold the image
+			iScreenWidth = GetSystemMetrics(SM_CXSCREEN);
+			iScreenHeight = GetSystemMetrics(SM_CYSCREEN);
+			iBpi = GetDeviceCaps(originalDC, BITSPIXEL);
+			
+			info.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+			info.bmiHeader.biWidth = iScreenWidth;
+			info.bmiHeader.biHeight = iScreenHeight;
+			info.bmiHeader.biPlanes = 1;
+			info.bmiHeader.biBitCount = iBpi;
+			info.bmiHeader.biCompression = BI_RGB;
+			hBitmap = CreateDIBSection(resizeBufferDC, &info, DIB_RGB_COLORS, (void**)&pBits, 0, 0);
+
+			// select new bitmap into memory DC
+			SelectObject(resizeBufferDC, hBitmap);
+
+			// copy from the screen to memory
+			BitBlt(resizeBufferDC, 0, 0, iScreenWidth, -iScreenHeight, originalDC, 0, 0, SRCCOPY);
+
+			ReleaseDC(hWnd, originalDC);
+			*/
+			testResizing = 1;
+
+			_glfwPlatformMakeContextCurrent(prevWindow);
+
+			return 0;
+
+
+
+			/*
+			HDC hDCScreen;
+			HDC resizeBufferDC;
+			int screenwidth, screenheight;
+			FILE *fp = NULL;
+			BITMAP bitmap;
+			BITMAPINFOHEADER bih = { 0 };
+			BITMAPFILEHEADER bfh = { 0 };
+			BITMAPINFO MyBMInfo = { 0 };
+			HGDIOBJ hOldBitmap;
+			RECT clientArea;
+			char* p;
+			int ret1, ret2, ret3;
+
+			hDCScreen = GetDC(hWnd);
+
+			resizeBufferDC = CreateCompatibleDC(hDCScreen);
+
+			GetClientRect(hWnd, &clientArea);
+			screenwidth = clientArea.right - clientArea.left;
+			screenheight = clientArea.bottom - clientArea.top;
+
+			hBitmap = CreateCompatibleBitmap(hDCScreen, screenwidth, screenheight);
+
+			hOldBitmap = SelectObject(resizeBufferDC, hBitmap);
+
+			ret3 = BitBlt(resizeBufferDC, 0, 0, screenwidth, screenheight, hDCScreen, 0, 0, SRCCOPY | CAPTUREBLT);
+
+			///////////////////////
+			MyBMInfo.bmiHeader.biSize = sizeof(MyBMInfo.bmiHeader);
+			GetDIBits(hDCScreen, hBitmap, 0, 0, NULL, &MyBMInfo, DIB_RGB_COLORS);
+
+			MyBMInfo.bmiHeader.biBitCount = 32;
+			MyBMInfo.bmiHeader.biCompression = BI_RGB;  // no compression -> easier to use
+			// correct the bottom-up ordering of lines (abs is in cstdblib and stdlib.h)
+			MyBMInfo.bmiHeader.biHeight = abs(MyBMInfo.bmiHeader.biHeight);
+
+			fp = fopen("testesttest.bmp", "w+b");
+
+			bfh.bfOffBits = sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER);
+			bfh.bfSize = bfh.bfOffBits + MyBMInfo.bmiHeader.biSizeImage;
+			bfh.bfType = (WORD)0x4d42;
+
+			if (fp)
+			{
+				fwrite(&bfh, 1, sizeof(BITMAPFILEHEADER), fp);
+
+				fwrite(&MyBMInfo.bmiHeader, 1, sizeof(BITMAPINFOHEADER), fp);
+			}
+
+			p = (char*)malloc(MyBMInfo.bmiHeader.biSizeImage * sizeof(char));
+
+			GetDIBits(hDCScreen, hBitmap, 0, MyBMInfo.bmiHeader.biHeight, p, &MyBMInfo, DIB_RGB_COLORS);
+			if (fp)
+				fwrite(p, 1, MyBMInfo.bmiHeader.biSizeImage * sizeof(char), fp);
+
+			free(p);
+
+			if (fp)
+				fclose(fp);
+
+
+			/////////////////////////
+
+
+
+			//convert bitmahpdeandle to dib
+
+			hOldBitmap = SelectObject(resizeBufferDC, hOldBitmap);
+
+			ret1 = DeleteObject(resizeBufferDC);
+			ret2 = ReleaseDC(hWnd, hDCScreen);
+
+			testResizing = 1;
+			return 0;
+			*/
+		}
+
+		case WM_EXITSIZEMOVE:
+		{
+			int ret;
+
+			////
+			PAINTSTRUCT ps;
+			HDC hdc = BeginPaint(hWnd, &ps);
+
+			// All painting occurs here, between BeginPaint and EndPaint.
+
+			HBRUSH brush = CreateSolidBrush(RGB(255, 0, 0));
+
+			FillRect(hdc, &ps.rcPaint, brush);
+
+			EndPaint(hWnd, &ps);
+
+
+			ret = DeleteObject(hBitmap);
+
+			testResizing = 0;
+			return 0;
+		}
+
+		case WM_SIZING:
+		{
+			if (window->maintainAspectRatio)
+			{
+				int frameX = 0;
+				int frameY = 0;
+
+				RECT* rect = (RECT*)lParam;
+				long cx; 
+				long cy;
+
+				long x = window->aspectX;
+				long y = window->aspectY;
+
+				if (!IsWindow(hWnd) || (GetWindowLong(hWnd, GWL_STYLE) & WS_THICKFRAME))
+				{
+					int cxFrame = GetSystemMetrics(SM_CXSIZEFRAME);
+					int cyFrame = GetSystemMetrics(SM_CYSIZEFRAME);
+					int cyCaption = GetSystemMetrics(SM_CYCAPTION);
+					frameX = cxFrame << 1;
+					frameY = (cyFrame << 1) + cyCaption;
+				}
+
+				cx = rect->right - rect->left - frameX; 
+				cy = rect->bottom - rect->top - frameY;
+
+				//TODO: put in a callback
+				resizing = 1;
+
+				switch (wParam)
+				{
+				case WMSZ_TOP:
+				case WMSZ_BOTTOM:
+					cx = constrainProportions(cx, cy, x, y);
+					rect->right = rect->left + cx + frameX;
+					break;
+
+				case WMSZ_TOPLEFT:
+				case WMSZ_TOPRIGHT:
+					cy = constrainProportions(cy, cx, y, x);
+					rect->top = rect->bottom - cy - frameY;
+					break;
+
+				default:
+					cy = constrainProportions(cy, cx, y, x);
+					rect->bottom = rect->top + cy + frameY;
+					break;
+				}
+			}
+			return 0;
+		}
+
         case WM_MOVE:
         {
             if (window->cursorMode == GLFW_CURSOR_DISABLED)
@@ -675,6 +979,70 @@ static LRESULT CALLBACK windowProc(HWND hWnd, UINT uMsg,
 
         case WM_PAINT:
         {
+			if (testResizing)
+			{
+				
+				int currentWidth, currentHeight, bufferWidth, bufferHeight;
+				PAINTSTRUCT ps;
+				BITMAP bitmap;
+				HDC memoryDC, currentDC;
+				RECT clientArea;
+				
+				currentDC = BeginPaint(hWnd, &ps);
+				memoryDC = CreateCompatibleDC(currentDC);
+				
+				GetObject(hBitmap, sizeof(BITMAP), &bitmap);
+
+				GetClientRect(hWnd, &clientArea);
+				currentWidth = clientArea.right - clientArea.left;
+				currentHeight = clientArea.bottom - clientArea.top;
+				bufferWidth = bitmap.bmWidth;
+				bufferHeight = bitmap.bmHeight;
+
+				SelectObject(memoryDC, hBitmap);
+				StretchBlt(currentDC, 0, 0, currentWidth, currentHeight, memoryDC, 0, 0, bufferWidth, bufferHeight, SRCCOPY);
+
+				EndPaint(hWnd, &ps);
+
+				DeleteDC(memoryDC);
+
+
+				//GetObject(hBitmap, sizeof(BITMAP), &bitmap);
+
+				//p = (char*)malloc(bitmap.bmWidthBytes * bitmap.bmHeight);
+
+				//GetDIBits(hDCScreen, hBitmap, 0, bitmap.bmHeight, p, (LPBITMAPINFO)&bih, DIB_RGB_COLORS);
+
+
+
+
+				//////////////
+				/*
+				HDC currentDC = BeginPaint(hWnd, &ps);
+				currentWidth = GetDeviceCaps(currentDC, HORZRES);
+				currentHeight = GetDeviceCaps(currentDC, VERTRES);
+				bufferWidth = GetDeviceCaps(resizeBufferDC, HORZRES);
+				bufferHeight = GetDeviceCaps(resizeBufferDC, VERTRES);
+
+				//BitBlt(resizeBufferDC, 0, 0, iScreenWidth, -iScreenHeight, originalDC, 0, 0, SRCCOPY);
+				StretchBlt(currentDC, 0, 0, currentWidth, currentHeight, resizeBufferDC, 0, 0, bufferWidth, bufferHeight, SRCCOPY);
+				EndPaint(hWnd, &ps);
+				*/
+				////////////
+				/*
+				PAINTSTRUCT ps;
+				HDC hdc = BeginPaint(hWnd, &ps);
+
+				// All painting occurs here, between BeginPaint and EndPaint.
+
+				HBRUSH brush = CreateSolidBrush(RGB(255, 0, 0));
+
+				FillRect(hdc, &ps.rcPaint, brush);
+
+				EndPaint(hWnd, &ps);
+				*/
+			}
+
             _glfwInputWindowDamage(window);
             break;
         }

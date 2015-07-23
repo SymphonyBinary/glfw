@@ -491,8 +491,9 @@ extern "C" {
 #define GLFW_FOCUSED                0x00020001
 #define GLFW_ICONIFIED              0x00020002
 #define GLFW_RESIZABLE              0x00020003
-#define GLFW_VISIBLE                0x00020004
-#define GLFW_DECORATED              0x00020005
+#define GLFW_MAINTAIN_ASPECT_RATIO  0x00020004
+#define GLFW_VISIBLE                0x00020005
+#define GLFW_DECORATED              0x00020006
 
 #define GLFW_RED_BITS               0x00021001
 #define GLFW_GREEN_BITS             0x00021002
