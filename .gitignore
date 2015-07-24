@@ -68,3 +68,5 @@ tests/version
 tests/windows
 
 *.suo
+GLFW.v12.suo
+*.suo

@@ -156,6 +156,12 @@ typedef struct _GLFWwindowWin32
     GLboolean           cursorInside;
     GLboolean           cursorHidden;
     double              oldCursorX, oldCursorY;
+
+	// flags to handle resizing
+	// if isMoveResizing, hBitmap and memoryDC are considered valid and must be cleaned.
+	char                isMoveResizing;
+	HBITMAP             hBitmap;
+	HDC                 memoryDC;
 } _GLFWwindowWin32;
 
 
