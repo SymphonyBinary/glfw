@@ -67,3 +67,4 @@ tests/title
 tests/version
 tests/windows
 
+*.suo
