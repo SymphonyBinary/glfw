@@ -4,8 +4,8 @@ _ReSharper*
 *.opensdf
 *.sdf
 *.dir
-*.vcxproj*
 *.sln
+*.suo
 Win32
 Debug
 Release
